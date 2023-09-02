@@ -875,7 +875,7 @@
                               {% endif %}
                             {% endfor %}
                           </select></td>
-                        <td class="text-left"><select name="product_discount[{{ discount_row }}][product_discount]" class="form-control">
+                        <td class="text-left"><select name="product_discount[{{ discount_row }}][discount_type]" class="form-control">
                             {% for discount_type in discount_types %}
                               {% if discount_type.discount_type_id == product_discount.discount_type %}
                                 <option value="{{ discount_type.discount_type_id }}" selected="selected">{{ discount_type.name }}</option>
