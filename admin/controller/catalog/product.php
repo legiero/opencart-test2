@@ -1003,10 +1003,14 @@ class ControllerCatalogProduct extends Controller {
 		}
 
 		$data['product_discounts'] = array();
-
+        $data['discount_types'] = array(
+            ['discount_type_id'=>1, 'name'=>$this->language->get('product_discount_type1')],
+            ['discount_type_id'=>2, 'name'=>$this->language->get('product_discount_type2')],
+        );
 		foreach ($product_discounts as $product_discount) {
 			$data['product_discounts'][] = array(
 				'customer_group_id' => $product_discount['customer_group_id'],
+				'discount_type' => $product_discount['discount_type'],
 				'quantity'          => $product_discount['quantity'],
 				'priority'          => $product_discount['priority'],
 				'price'             => $product_discount['price'],
