@@ -166,19 +166,32 @@ class Cart {
 				$price = $product_query->row['price'];
 
 				// Product Discounts
-				$discount_quantity = 0;
+				$discount_quantity = $discount_price = 0;
 
 				foreach ($cart_query->rows as $cart_2) {
 					if ($cart_2['product_id'] == $cart['product_id']) {
 						$discount_quantity += $cart_2['quantity'];
 					}
 				}
-
-				$product_discount_query = $this->db->query("SELECT price FROM " . DB_PREFIX . "product_discount WHERE product_id = '" . (int)$cart['product_id'] . "' AND customer_group_id = '" . (int)$this->config->get('config_customer_group_id') . "' AND quantity <= '" . (int)$discount_quantity . "' AND ((date_start = '0000-00-00' OR date_start < NOW()) AND (date_end = '0000-00-00' OR date_end > NOW())) ORDER BY quantity DESC, priority ASC, price ASC LIMIT 1");
+                $discount_sum = $discount_quantity * $price;
+				$discount_from_quantity = false;
+				/*get discount from quantity*/
+				$product_discount_query = $this->db->query("SELECT price FROM " . DB_PREFIX . "product_discount WHERE product_id = '" . (int)$cart['product_id'] . "' AND customer_group_id = '" . (int)$this->config->get('config_customer_group_id') . "' AND discount_type = 1 AND quantity <= '" . (int)$discount_quantity . "' AND ((date_start = '0000-00-00' OR date_start < NOW()) AND (date_end = '0000-00-00' OR date_end > NOW())) ORDER BY quantity DESC, priority ASC, price ASC LIMIT 1");
 
 				if ($product_discount_query->num_rows) {
-					$price = $product_discount_query->row['price'];
+                    $discount_price = $product_discount_query->row['price'];
+                    $discount_from_quantity = true;
 				}
+                /*get discount from sum*/
+                if (!$discount_from_quantity) {
+                    $product_discount_query = $this->db->query("SELECT price FROM " . DB_PREFIX . "product_discount WHERE product_id = '" . (int)$cart['product_id'] . "' AND customer_group_id = '" . (int)$this->config->get('config_customer_group_id') . "' AND discount_type = 2 AND quantity <= '" . (int)$discount_sum . "' AND ((date_start = '0000-00-00' OR date_start < NOW()) AND (date_end = '0000-00-00' OR date_end > NOW())) ORDER BY quantity DESC, priority ASC, price ASC LIMIT 1");
+                    if ($product_discount_query->num_rows) {
+                        $discount_price = $product_discount_query->row['price'];
+                    }
+                }
+                if ($discount_price) {
+                    $price = $this->calculateDiscountPrice($price, $discount_price);
+                }
 
 				// Product Specials
 				$product_special_query = $this->db->query("SELECT price FROM " . DB_PREFIX . "product_special WHERE product_id = '" . (int)$cart['product_id'] . "' AND customer_group_id = '" . (int)$this->config->get('config_customer_group_id') . "' AND ((date_start = '0000-00-00' OR date_start < NOW()) AND (date_end = '0000-00-00' OR date_end > NOW())) ORDER BY priority ASC, price ASC LIMIT 1");
@@ -268,6 +281,18 @@ class Cart {
 
 		return $product_data;
 	}
+
+	public function calculateDiscountPrice ($product_price, $discount_price) {
+	    if ($discount_price >= 1) {
+            return $discount_price;
+        } else if ($discount_price >= 0) {
+	        return floatval($discount_price)*$product_price;
+        } else if ($discount_price > -1) {
+            return (1 + floatval($discount_price))*$product_price;
+        } else {
+            return ($discount_price + $product_price) > 0 ? ($discount_price + $product_price) : 0;
+        }
+    }
 
 	public function add($product_id, $quantity = 1, $option = array(), $recurring_id = 0) {
 		$query = $this->db->query("SELECT COUNT(*) AS total FROM " . DB_PREFIX . "cart WHERE api_id = '" . (isset($this->session->data['api_id']) ? (int)$this->session->data['api_id'] : 0) . "' AND customer_id = '" . (int)$this->customer->getId() . "' AND session_id = '" . $this->db->escape($this->session->getId()) . "' AND product_id = '" . (int)$product_id . "' AND recurring_id = '" . (int)$recurring_id . "' AND `option` = '" . $this->db->escape(json_encode($option)) . "'");

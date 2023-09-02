@@ -316,9 +316,14 @@ class ControllerProductProduct extends Controller {
 			$data['discounts'] = array();
 
 			foreach ($discounts as $discount) {
+                $discount_price = $this->calculateDiscountPrice($product_info['price'], $discount['price']);
+                $discount_quantity = $discount['quantity'];
+                if ($discount['discount_type'] == 2) {
+                    $discount_quantity = $this->currency->format($discount['quantity'],$this->session->data['currency']);
+                }
 				$data['discounts'][] = array(
-					'quantity' => $discount['quantity'],
-					'price'    => $this->currency->format($this->tax->calculate($discount['price'], $product_info['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency'])
+					'quantity' => $discount_quantity,
+					'price'    => $this->currency->format($this->tax->calculate($discount_price, $product_info['tax_class_id'], $this->config->get('config_tax')), $this->session->data['currency'])
 				);
 			}
 
@@ -539,7 +544,17 @@ class ControllerProductProduct extends Controller {
 			$this->response->setOutput($this->load->view('error/not_found', $data));
 		}
 	}
-
+    public function calculateDiscountPrice ($product_price, $discount_price) {
+        if ($discount_price >= 1) {
+            return $discount_price;
+        } else if ($discount_price >= 0) {
+            return floatval($discount_price)*$product_price;
+        } else if ($discount_price > -1) {
+            return (1 + floatval($discount_price))*$product_price;
+        } else {
+            return ($discount_price + $product_price) > 0 ? ($discount_price + $product_price) : 0;
+        }
+    }
 	public function review() {
 		$this->load->language('product/product');
 
